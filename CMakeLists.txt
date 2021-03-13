@@ -11,4 +11,7 @@ set (CMAKE_CXX_FLAGS "-std=c++11 -Wall ${CMAKE_CXX_FLAGS}")
 add_executable(driver driver.cpp)
 
 # create the steering sim executable
-add_executable(steering steeringSim.cpp)
+add_executable(steeringSim steeringSim.cpp)
+
+# create the executable for the steering
+add_executable(steering steering.cpp)

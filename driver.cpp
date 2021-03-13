@@ -2,6 +2,9 @@
 #include <unistd.h>
 #include <wait.h>
 #include <vector>
+#include <stdio.h>
+// #include <fcntl.h>
+
 
 int main(int argc, char **argv) {
 
