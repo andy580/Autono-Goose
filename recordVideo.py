@@ -3,15 +3,19 @@
 
 import depthai as dai
 import os
+import time
+
+timeStamp = time.localtime()
+current_time = time.strftime("%H%M%S", timeStamp)
 
 VIDEO_PATH = "/home/andy/Documents/Autono-Goose/videos/"
-MONO_LEFT_FILE = 'mono1.h264'
-MONO_RIGHT_FILE = 'mono2.h264'
-COLOR_MID_FILE = 'color.h265'
+MONO_LEFT_FILE = 'mono1-' + current_time + '.h264'
+MONO_RIGHT_FILE = 'mono2-' + current_time + '.h264'
+COLOR_MID_FILE = 'color-' + current_time + '.h265'
 
-MONO_LEFT_OUTPUT_FILE = 'mono1.mp4'
-MONO_RIGHT_OUTPUT_FILE = 'mono2.mp4'
-COLOR_MID_OUTPUT_FILE = 'color4k.mp4'
+MONO_LEFT_OUTPUT_FILE = 'mono1-' + current_time + '.h264'
+MONO_RIGHT_OUTPUT_FILE = 'mono2-' + current_time + '.h264'
+COLOR_MID_OUTPUT_FILE = 'color-' + current_time + '.h265'
 
 pipeline = dai.Pipeline()
 
