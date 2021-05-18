@@ -7,8 +7,8 @@ from time import monotonic
 import time
 
 VIDEO_PATH = "/home/andy/Documents/Autono-Goose/videos/"
-mono1Path = "mono1t2.mp4"
-mono2Path = "mono2t2.mp4"
+mono1Path = "mono1t1.mp4"
+mono2Path = "mono2t1.mp4"
 
 extended_disparity = False
 subpixel = False
