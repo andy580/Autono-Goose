@@ -17,4 +17,6 @@ int main() {
     std::cout << "closing port" << std::endl;
     fclose(serialPort);
 
+    
+
 }

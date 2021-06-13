@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
         dup2(py2cpp[1], STDOUT_FILENO);
         close(py2cpp[1]);
 
-        char* args[] = {"python3", "../pythonSim.py", NULL};
+        char* args[] = {"python3", "../PersonTracker.py", NULL};
         execvp("python3", args);
     } 
     else {
