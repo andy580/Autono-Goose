@@ -2,16 +2,23 @@
 #define sDirPin 6
 #define sStepPin 7
 
-#define rightBtnPin 2
-#define leftBtnPin 3
+#define stopRightBtnPin 9
+#define stopLeftBtnPin 10
+
+#define steerRightBtnPin 11
+#define steerLeftBtnPin 12
 
 #define ledPin 13
+#define limStopPin 2 
 
 char command = ' '; 
 bool recieved = false;
+bool brakeEngaged = true;
 
 int rightBtnState =0;
 int leftBtnState =0;
+int StopGoTurns = 10;
+int setupBrakeTurns = 12;
  
 // Declare stepper motor variables
 // Delay in microseconds
@@ -21,9 +28,9 @@ int leftBtnState =0;
 
 //Nema 23
 // usually 500 us delay will lead to ~70-80 RPM = 2000 pps
-int delayStep = 1000;
+int delayStep = 750;
 int delayCommand = 100;
-int stepsPerRevolution = 850;
+int stepsPerRevolution = 200;
 
 
 // /////////////////Main/////////////// // 
@@ -37,76 +44,90 @@ void setup() {
   digitalWrite(ledPin, LOW);
 
 // Buttons
-  pinMode(rightBtnPin, INPUT);
-  pinMode(leftBtnPin, INPUT);
+  pinMode(stopRightBtnPin, INPUT);
+  pinMode(stopLeftBtnPin, INPUT);
+
+// Limit Switch
+  pinMode(limStopPin, INPUT);
 
 // Declare stepper motor pins as output:
   pinMode(sStepPin, OUTPUT);
   pinMode(sDirPin, OUTPUT); 
+
+  setupBrake();
 }
 
 void loop(){
 
-rightBtnState = digitalRead(rightBtnPin);
-leftBtnState = digitalRead(leftBtnPin);
+rightBtnState = digitalRead(stopRightBtnPin);
+leftBtnState = digitalRead(stopLeftBtnPin);
   
 //Buttons on breadboard send controls
   if (leftBtnState == HIGH){
-    command = 'l';
+    command = 'g';
   }
   if (rightBtnState == HIGH){
-    command = 'r';
+    command = 's';
   }
   
   getCommand(command, recieved);
-  execCommand(command, recieved);
+  execCommand(command, recieved, brakeEngaged);
 
   command = ' ';
-  delay(delayCommand);
+//  delay(delayCommand);
+
+  if(digitalRead(limStopPin) == HIGH) {
+    Serial.println("on");
+  }
   
 }
 
 
 // ////////////////////Helper Functions/////////////////// // 
-void turn(int number){
-  digitalWrite(sDirPin, HIGH);
-  for (int i=0; i<number; i++){
-    turnOnce();
-  }
-  delay(delayCommand);
-  
+void setupBrake(){
   digitalWrite(sDirPin, LOW);
-  for (int i=0; i<number; i++){
+  
+  while(digitalRead(limStopPin) == LOW){
+      digitalWrite(sStepPin, HIGH);
+      delayMicroseconds(delayStep);
+      digitalWrite(sStepPin, LOW);
+      delayMicroseconds(delayStep);
+    if(digitalRead(limStopPin) == HIGH) { break; }
+  }
+  digitalWrite(sDirPin, HIGH);
+//  Engange Brake
+  for (int i=0; i<setupBrakeTurns; i++){
     turnOnce();
   }
-  delay(delayCommand);
 }
 
 
 void getCommand(char &command, bool &recieved) {
 //  command = Serial.read();
-  if ( (command == 'r') || (command == 'l') ) {
+  if ( (command == 's') || (command == 'g') ) {
     recieved = true;
   }
 }
 
-void execCommand(char &command, bool &recieved) {
+void execCommand(char &command, bool &recieved, bool &brakeEngaged) {
   if (recieved == true){
-    if (command == 'r'){
-      Serial.println("Executing right");
-      digitalWrite(ledPin, HIGH);
+    if (command == 's' && brakeEngaged == true) { recieved = false;  }
+    if (command == 'g' && brakeEngaged == false) { recieved = false;  }
+    
+    if (command == 's' && recieved == true){
+      Serial.println("Executing Stop");
       digitalWrite(sDirPin, HIGH);
-      turnOnce();
+      for (int i=0; i<StopGoTurns; i++) {turnOnce();}
       recieved = false;
-      digitalWrite(ledPin, LOW);
-    } else if (command == 'l') {
-      Serial.println("Executing left");
-      digitalWrite(ledPin, HIGH);
+      brakeEngaged=true;
+    } else if (command == 'g' && recieved == true) {
+      Serial.println("Executing Go");
       digitalWrite(sDirPin, LOW);
-      turnOnce();
+      for (int i=0; i<StopGoTurns; i++) {turnOnce();}
       recieved = false;
-      digitalWrite(ledPin, LOW);
+      brakeEngaged=false;
     }
+    Serial.println(brakeEngaged);
     recieved = false;
   }
 }

@@ -6,6 +6,7 @@ import depthai as dai
 import numpy as np
 import time
 import argparse
+import math
 
 labelMap = ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
             "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
@@ -144,9 +145,10 @@ with dai.Device(pipeline) as device:
                     print(counter, 'stop', 'too close')
                 else:
                     print(counter, 'go')
-                
+                    # in path check
+                    inPath = bool( (900-(np.tan(np.deg2rad(5))*t.spatialCoordinates.z)) >0 )                 
+                    print(inPath)
             
-
         if visiblePerson == False:
             print(counter, 'stop', 'no person to track')
              
