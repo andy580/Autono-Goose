@@ -7,6 +7,13 @@ import numpy as np
 import time
 import argparse
 import math
+import time
+import serial
+
+# ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+
+executing = False
+brake = True
 
 labelMap = ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
             "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
@@ -98,13 +105,19 @@ with dai.Device(pipeline) as device:
     startTime = time.monotonic()
     counter = 0
     fps = 0
+    seconds = 0
+    execTime = 0
     frame = None
 
     while(True):
         imgFrame = preview.get()
         track = tracklets.get()
 
+        if (counter == 0):
+            seconds +=1
         counter+=1
+        
+
         current_time = time.monotonic()
         if (current_time - startTime) > 1 :
             fps = counter / (current_time - startTime)
@@ -142,22 +155,40 @@ with dai.Device(pipeline) as device:
             if t.status == t.TrackingStatus.TRACKED:
                 visiblePerson = True
                 if(t.spatialCoordinates.z <= 1000):
-                    print(counter, 'stop', 'too close')
+                    # print(counter, 'stop', 'too close')
+                    # ser.write(b's')
+                    if (executing==False and brake==False):
+                        print(b's', flush=True)
+                        executing=True
+                        execTime = seconds+4
+                        brake = True
                 else:
-                    print(counter, 'go')
+                    # ser.write(b'g')
+                    if (executing==False and brake==True):
+                        print(b'g', flush=True)
+                        executing=True
+                        execTime = seconds+4
+                        brake = False
                     # in path check
                     inPath = bool( (900-(np.tan(np.deg2rad(5))*t.spatialCoordinates.z)) >0 )                 
-                    print(inPath)
+                    # print(inPath)
             
         if visiblePerson == False:
-            print(counter, 'stop', 'no person to track')
-             
+            # ser.write(b's')
+            # print(counter, 'stop', 'no person to track')
+            if (seconds%4==0):
+                print(b's', flush=True)            
       
                 
         cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
 
         frame = cv2.resize(frame, (1000,1000))
         cv2.imshow("tracker", frame)
+        if counter == 1:
+            print(seconds)
+            if (seconds==execTime):
+                executing=False
+                print('Done executing')
 
         if cv2.waitKey(1) == ord('q'):
             break
