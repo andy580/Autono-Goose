@@ -10,7 +10,7 @@ import math
 import time
 import serial
 
-# ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
 
 executing = False
 brake = True
@@ -58,7 +58,7 @@ stereo.setOutputDepth(True)
 stereo.setConfidenceThreshold(255)
 
 spatialDetectionNetwork.setBlobPath(args.nnPath)
-spatialDetectionNetwork.setConfidenceThreshold(0.5)
+spatialDetectionNetwork.setConfidenceThreshold(0.9)
 spatialDetectionNetwork.input.setBlocking(False)
 spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
 spatialDetectionNetwork.setDepthLowerThreshold(100)
@@ -154,30 +154,46 @@ with dai.Device(pipeline) as device:
             # print(t.status, t.id, t.spatialCoordinates.x, t.spatialCoordinates.z)
             if t.status == t.TrackingStatus.TRACKED:
                 visiblePerson = True
-                if(t.spatialCoordinates.z <= 1000):
-                    # print(counter, 'stop', 'too close')
-                    # ser.write(b's')
-                    if (executing==False and brake==False):
-                        print(b's', flush=True)
-                        executing=True
-                        execTime = seconds+4
-                        brake = True
-                else:
-                    # ser.write(b'g')
-                    if (executing==False and brake==True):
-                        print(b'g', flush=True)
-                        executing=True
-                        execTime = seconds+4
-                        brake = False
-                    # in path check
-                    inPath = bool( (900-(np.tan(np.deg2rad(5))*t.spatialCoordinates.z)) >0 )                 
-                    # print(inPath)
-            
+        
+        if (len(trackletsData)>0):
+            closestPerson = t
+            for t in trackletsData:
+                if(t.spatialCoordinates.z < closestPerson.spatialCoordinates.z):
+                    closestPerson = t
+
         if visiblePerson == False:
             # ser.write(b's')
             # print(counter, 'stop', 'no person to track')
-            if (seconds%4==0):
-                print(b's', flush=True)            
+            if (seconds%4==0 and executing==False and brake==False):
+                print(b's', flush=True)   
+                ser.write(b's')  
+                executing=True
+                execTime = seconds+4
+                brake = True   
+
+        elif(closestPerson.spatialCoordinates.z <= 2000):
+            # print(counter, 'stop', 'too close')
+            
+            if (executing==False and brake==False):
+                print(b's', flush=True)
+                ser.write(b's')
+                executing=True
+                execTime = seconds+4
+                brake = True
+
+        else:
+            if (executing==False and brake==True and visiblePerson == True) :
+                print(closestPerson.spatialCoordinates.z)
+                print(b'g', flush=True)
+                ser.write(b'g')
+                executing=True
+                execTime = seconds+4
+                brake = False
+            # in path check
+            inPath = bool( (900-(np.tan(np.deg2rad(5))*t.spatialCoordinates.z)) >0 )                 
+            # print(inPath)
+            
+            
       
                 
         cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
