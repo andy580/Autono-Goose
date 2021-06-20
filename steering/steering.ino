@@ -17,7 +17,7 @@ bool brakeEngaged = true;
 
 int rightBtnState =0;
 int leftBtnState =0;
-int StopGoTurns = 10;
+int StopGoTurns = 5;
 int setupBrakeTurns = 12;
  
 // Declare stepper motor variables
@@ -76,9 +76,9 @@ leftBtnState = digitalRead(stopLeftBtnPin);
   command = ' ';
 //  delay(delayCommand);
 
-  if(digitalRead(limStopPin) == HIGH) {
-    Serial.println("on");
-  }
+//  if(digitalRead(limStopPin) == LOW) {
+//    Serial.println("on");
+//  }
   
 }
 
@@ -87,12 +87,13 @@ leftBtnState = digitalRead(stopLeftBtnPin);
 void setupBrake(){
   digitalWrite(sDirPin, LOW);
   
-  while(digitalRead(limStopPin) == LOW){
+  while(digitalRead(limStopPin) == HIGH){
+//      Serial.println(limStopPin);
       digitalWrite(sStepPin, HIGH);
       delayMicroseconds(delayStep);
       digitalWrite(sStepPin, LOW);
       delayMicroseconds(delayStep);
-    if(digitalRead(limStopPin) == HIGH) { break; }
+    if(digitalRead(limStopPin) == LOW) { break; }
   }
   digitalWrite(sDirPin, HIGH);
 //  Engange Brake
