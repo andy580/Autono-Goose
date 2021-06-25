@@ -17,8 +17,8 @@ bool brakeEngaged = true;
 
 int rightBtnState =0;
 int leftBtnState =0;
-int StopGoTurns = 5;
-int setupBrakeTurns = 12;
+int StopGoTurns = 6;
+int setupBrakeTurns = 13;
  
 // Declare stepper motor variables
 // Delay in microseconds
@@ -64,10 +64,10 @@ leftBtnState = digitalRead(stopLeftBtnPin);
   
 //Buttons on breadboard send controls
   if (leftBtnState == HIGH){
-    command = 'g';
+    command = 'G';
   }
   if (rightBtnState == HIGH){
-    command = 's';
+    command = 'S';
   }
   
   getCommand(command, recieved);
@@ -100,12 +100,13 @@ void setupBrake(){
   for (int i=0; i<setupBrakeTurns; i++){
     turnOnce();
   }
+  delayStep = 600;
 }
 
 
 void getCommand(char &command, bool &recieved) {
-//  command = Serial.read();
-  if ( (command == 's') || (command == 'g') ) {
+  if (command == ' '){ command = Serial.read(); }
+  if ( (command == 's') || (command == 'g') || (command == 'S') || (command == 'G') ) {
     recieved = true;
   }
 }
@@ -128,6 +129,19 @@ void execCommand(char &command, bool &recieved, bool &brakeEngaged) {
       recieved = false;
       brakeEngaged=false;
     }
+
+    else if (command =='S' && recieved == true){
+      digitalWrite(sDirPin, HIGH);
+      for (int i=0; i<1; i++) {turnOnce();}
+      recieved = false;
+    }
+    else if (command == 'G' && recieved == true) {
+      Serial.println("Executing Go");
+      digitalWrite(sDirPin, LOW);
+      for (int i=0; i<1; i++) {turnOnce();}
+      recieved = false;
+    }
+    
     Serial.println(brakeEngaged);
     recieved = false;
   }

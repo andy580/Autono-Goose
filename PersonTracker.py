@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 from pathlib import Path
 import cv2
 import depthai as dai
@@ -14,11 +15,17 @@ ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
 
 executing = False
 brake = True
+lostPerson = False
+executionSeconds = 3
+missingPersonSeconds = 2
 
 labelMap = ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
             "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
+# nnPathDefault = str((Path(__file__).parent / Path('models/MobileNetSSD_deploy(5).blob')).resolve().absolute())
 nnPathDefault = str((Path(__file__).parent / Path('models/mobilenet-ssd_openvino_2021.2_6shave.blob')).resolve().absolute())
+# nnPathDefault = str((Path(__file__).parent / Path('models/person-detection-0202-8Shaves.blob')).resolve().absolute())
+
 parser = argparse.ArgumentParser()
 parser.add_argument('nnPath', nargs='?', help="Path to mobilenet detection network blob", default=nnPathDefault)
 parser.add_argument('-ff', '--full_frame', action="store_true", help="Perform tracking on full RGB frame", default=False)
@@ -43,26 +50,53 @@ trackerOut = pipeline.createXLinkOut()
 xoutRgb.setStreamName("preview")
 trackerOut.setStreamName("tracklets")
 
+# SSD 300 x 300
 colorCam.setPreviewSize(300, 300)
 colorCam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 colorCam.setInterleaved(False)
 colorCam.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
 
-monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
 monoLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
-monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
 monoRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
+
+### Trial 1
+# StereoDepth config options.
+# out_depth = False  # Disparity by default
+# out_rectified = True   # Output and display rectified streams
+# lrcheck = True   # Better handling for occlusions
+# extended = False  # Closer-in minimum depth, disparity range is doubled
+# subpixel = True   # Better accuracy for longer distance, fractional disparity 32-levels
+# median = dai.StereoDepthProperties.MedianFilter.KERNEL_7x7
+
+# # Sanitize some incompatible options
+# if lrcheck or extended or subpixel:
+#     median = dai.StereoDepthProperties.MedianFilter.MEDIAN_OFF
+
+# stereo.setConfidenceThreshold(0)
+# stereo.setRectifyEdgeFillColor(0) # Black, to better see the cutout
+# stereo.setMedianFilter(median) # KERNEL_7x7 default
+# stereo.setLeftRightCheck(lrcheck)
+# stereo.setExtendedDisparity(extended)
+# stereo.setSubpixel(subpixel)
+
+# stereo.setEmptyCalibration() # Set if the input frames are already rectified
+# stereo.setInputResolution(1280, 800)
+
+### Trial 2
 
 # setting node configs
 stereo.setOutputDepth(True)
+# stereo.setLeftRightCheck(True)
 stereo.setConfidenceThreshold(255)
 
 spatialDetectionNetwork.setBlobPath(args.nnPath)
-spatialDetectionNetwork.setConfidenceThreshold(0.9)
+spatialDetectionNetwork.setConfidenceThreshold(0.5)
 spatialDetectionNetwork.input.setBlocking(False)
-spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
-spatialDetectionNetwork.setDepthLowerThreshold(100)
-spatialDetectionNetwork.setDepthUpperThreshold(5000)
+spatialDetectionNetwork.setBoundingBoxScaleFactor(0.1)
+spatialDetectionNetwork.setDepthLowerThreshold(200)
+spatialDetectionNetwork.setDepthUpperThreshold(15000)
 
 # Create outputs
 monoLeft.out.link(stereo.left)
@@ -84,7 +118,7 @@ if fullFrameTracking:
     colorCam.video.link(objectTracker.inputTrackerFrame)
     objectTracker.inputTrackerFrame.setBlocking(False)
     # do not block the pipeline if it's too slow on full frame
-    objectTracker.inputTrackerFrame.setQueueSize(2)
+    objectTracker.inputTrackerFrame.setQueueSize(4)
 else:
     spatialDetectionNetwork.passthrough.link(objectTracker.inputTrackerFrame)
 
@@ -107,6 +141,7 @@ with dai.Device(pipeline) as device:
     fps = 0
     seconds = 0
     execTime = 0
+    missingPersonTime = 0
     frame = None
 
     while(True):
@@ -144,7 +179,8 @@ with dai.Device(pipeline) as device:
             statusMap = {dai.Tracklet.TrackingStatus.NEW : "NEW", dai.Tracklet.TrackingStatus.TRACKED : "TRACKED", dai.Tracklet.TrackingStatus.LOST : "LOST"}
             cv2.putText(frame, str(label), (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
             cv2.putText(frame, f"ID: {[t.id]}", (x1 + 10, y1 + 35), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
-            cv2.putText(frame, statusMap[t.status], (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
+            if t.status != t.TrackingStatus.REMOVED:
+                cv2.putText(frame, statusMap[t.status], (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
         
             cv2.putText(frame, f"X: {int(t.spatialCoordinates.x)} mm", (x1 + 10, y1 + 65), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
@@ -161,25 +197,23 @@ with dai.Device(pipeline) as device:
                 if(t.spatialCoordinates.z < closestPerson.spatialCoordinates.z):
                     closestPerson = t
 
-        if visiblePerson == False:
-            # ser.write(b's')
-            # print(counter, 'stop', 'no person to track')
-            if (seconds%4==0 and executing==False and brake==False):
-                print(b's', flush=True)   
-                ser.write(b's')  
-                executing=True
-                execTime = seconds+4
-                brake = True   
+        if (seconds <12):
+            continue
 
-        elif(closestPerson.spatialCoordinates.z <= 2000):
-            # print(counter, 'stop', 'too close')
-            
+        if (visiblePerson == False):
+            if (missingPersonTime == seconds):
+                lostPerson=True
+            elif missingPersonTime < seconds:
+                missingPersonTime = seconds+missingPersonSeconds
+
+        elif(closestPerson.spatialCoordinates.z <= 1200):           
             if (executing==False and brake==False):
                 print(b's', flush=True)
                 ser.write(b's')
                 executing=True
-                execTime = seconds+4
+                execTime = seconds+executionSeconds
                 brake = True
+                lostPerson = False
 
         else:
             if (executing==False and brake==True and visiblePerson == True) :
@@ -187,24 +221,34 @@ with dai.Device(pipeline) as device:
                 print(b'g', flush=True)
                 ser.write(b'g')
                 executing=True
-                execTime = seconds+4
+                execTime = seconds+executionSeconds
                 brake = False
+                lostPerson = False
+
+        if (lostPerson == True):
+            if (executing==False and brake==False):
+                print('lost person')
+                print(b's', flush=True)   
+                ser.write(b's')  
+                executing=True
+                execTime = seconds+executionSeconds
+                brake = True   
+
             # in path check
             inPath = bool( (900-(np.tan(np.deg2rad(5))*t.spatialCoordinates.z)) >0 )                 
             # print(inPath)
             
-            
-      
-                
         cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
 
         frame = cv2.resize(frame, (1000,1000))
         cv2.imshow("tracker", frame)
+
         if counter == 1:
             print(seconds)
             if (seconds==execTime):
                 executing=False
                 print('Done executing')
+            
 
         if cv2.waitKey(1) == ord('q'):
             break
