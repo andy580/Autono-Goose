@@ -29,8 +29,7 @@ def showLargeFrame(frame, fps):
 
 def consoleOutput(car, timer):
     if timer.counter == 1:
-        print(timer.seconds, car.executingBrake)
+        print(timer.seconds, car.executingBrake, car.inPath())
         if (timer.seconds==timer.execTime):
             car.executingBrake=False
             print('Done executing')
-

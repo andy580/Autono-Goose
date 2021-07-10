@@ -40,7 +40,7 @@ def setupPipeline():
     stereo.setMedianFilter(median)
 
     spatialDetectionNetwork.setBlobPath(nnPath)
-    spatialDetectionNetwork.setConfidenceThreshold(0.5)
+    spatialDetectionNetwork.setConfidenceThreshold(0.2)
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.1)
     spatialDetectionNetwork.setDepthLowerThreshold(200)

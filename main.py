@@ -7,8 +7,11 @@ import display
 import Car
 import Clock
 
-ser = None
-# ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+try:
+    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+except:
+    ser = None
+
 pipeline = cameraSetup.setupPipeline()
 car = Car.Car()
 timer = Clock.Timekeeper()
@@ -40,6 +43,7 @@ with dai.Device() as device:
         
         car.getClosestPerson(trackletsData)
         car.controlBrake(timer, ser)
+        car.controlSteering(timer, ser)
             
         display.showLargeFrame(frame, timer.fps)
         display.consoleOutput(car, timer)

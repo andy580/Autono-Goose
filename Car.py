@@ -6,8 +6,8 @@ class Car():
     brake = True
     lostPerson = False
     visiblePerson = False
-    steeringPosition = 'n' #can be 'l', 'n', 'r'
-    stoppingDistance = 1200
+    steeringPosition = b'n' #can be 'l', 'n', 'r'
+    stoppingDistance = 4000
     executionSeconds = 3
     missingPersonSeconds = 2
     setupTime = 1
@@ -24,9 +24,14 @@ class Car():
         self.checkLostPerson(timer, ser)
         self.updateVisiblePerson(timer)
 
-    def controlSteering():
-        pass 
-        # TODO
+
+    def controlSteering(self, timer, ser):
+        if self.executingBrake == False and self.steeringPosition != self.inPath():
+            print('New Direction:', self.inPath())
+            self.steeringPosition = self.inPath()
+            if ser != None:
+                ser.write(self.inPath())
+
 
     def updateVisiblePerson(self, timer):
         if self.closestPerson != None and self.closestPerson.status == self.closestPerson.TrackingStatus.TRACKED:
@@ -85,10 +90,15 @@ class Car():
                 self.lostPerson = False
 
     def inPath(self):
-        inPath = bool( (900-(np.tan(np.deg2rad(5))*t.spatialCoordinates.z)) >0 )   
-        return inPath
-
-         
-        
-
-
+        if self.closestPerson != None: 
+            t = self.closestPerson
+            # inPath = (900-(np.tan(np.deg2rad(5))*t.spatialCoordinates.z))    
+            # print(900-(np.tan(np.deg2rad(5))*t.spatialCoordinates.z))
+            
+            if self.closestPerson.spatialCoordinates.x < -75:
+                inPath = b'l'
+            elif self.closestPerson.spatialCoordinates.x > 75:
+                inPath = b'r'
+            else:
+                inPath = b'n'
+            return inPath

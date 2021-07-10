@@ -17,8 +17,10 @@ bool brakeEngaged = true;
 
 int rightBtnState =0;
 int leftBtnState =0;
+
+
 int StopGoTurns = 6;
-int setupBrakeTurns = 13;
+int setupBrakeTurns = 15;
  
 // Declare stepper motor variables
 // Delay in microseconds
@@ -123,7 +125,7 @@ void execCommand(char &command, bool &recieved, bool &brakeEngaged) {
       recieved = false;
       brakeEngaged=true;
     } else if (command == 'g' && recieved == true) {
-      Serial.println("Executing Go");
+//      Serial.println("Executing Go");
       digitalWrite(sDirPin, LOW);
       for (int i=0; i<StopGoTurns; i++) {turnOnce();}
       recieved = false;
@@ -136,7 +138,7 @@ void execCommand(char &command, bool &recieved, bool &brakeEngaged) {
       recieved = false;
     }
     else if (command == 'G' && recieved == true) {
-      Serial.println("Executing Go");
+//      Serial.println("Executing Go");
       digitalWrite(sDirPin, LOW);
       for (int i=0; i<1; i++) {turnOnce();}
       recieved = false;
