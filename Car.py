@@ -7,10 +7,10 @@ class Car():
     lostPerson = False
     visiblePerson = False
     steeringPosition = b'n' #can be 'l', 'n', 'r'
-    stoppingDistance = 4000
+    stoppingDistance = 4700
     executionSeconds = 3
     missingPersonSeconds = 2
-    setupTime = 1
+    setupTime = 10
 
     closestPerson = None
 

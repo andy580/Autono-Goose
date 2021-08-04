@@ -25,6 +25,7 @@ def setupPipeline():
     trackerOut.setStreamName("tracklets")
 
     colorCam.setPreviewSize(300, 300)
+    colorCam.setBoardSocket(dai.CameraBoardSocket.RGB)
     colorCam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     colorCam.setInterleaved(False)
     colorCam.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -40,7 +41,7 @@ def setupPipeline():
     stereo.setMedianFilter(median)
 
     spatialDetectionNetwork.setBlobPath(nnPath)
-    spatialDetectionNetwork.setConfidenceThreshold(0.2)
+    spatialDetectionNetwork.setConfidenceThreshold(0.3)
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.1)
     spatialDetectionNetwork.setDepthLowerThreshold(200)
@@ -65,6 +66,37 @@ def setupPipeline():
     spatialDetectionNetwork.out.link(objectTracker.inputDetections)
 
     stereo.depth.link(spatialDetectionNetwork.inputDepth)
+
+
+    # Video Recording
+
+    xoutDepth = pipeline.createXLinkOut()
+    xoutDepth.setStreamName("depth")
+    stereo.disparity.link(xoutDepth.input)
+
+    videoEncoder = pipeline.createVideoEncoder()
+    videoEncoderRight = pipeline.createVideoEncoder()
+    videoEncoderLeft = pipeline.createVideoEncoder()
+    videoOut = pipeline.createXLinkOut()
+    videoOutRight = pipeline.createXLinkOut()
+    videoOutLeft = pipeline.createXLinkOut()
+
+    videoOut.setStreamName('h265')
+    videoOutRight.setStreamName('right')
+    videoOutLeft.setStreamName('left')
+
+    videoEncoder.setDefaultProfilePreset(1920, 1080, 30, dai.VideoEncoderProperties.Profile.H265_MAIN)
+    videoEncoderRight.setDefaultProfilePreset(1280, 720, 30, dai.VideoEncoderProperties.Profile.H264_MAIN)
+    videoEncoderLeft.setDefaultProfilePreset(1280, 720, 30, dai.VideoEncoderProperties.Profile.H264_MAIN)
+
+    colorCam.video.link(videoEncoder.input)
+    videoEncoder.bitstream.link(videoOut.input)
+
+    monoRight.out.link(videoEncoderRight.input)
+    videoEncoderRight.bitstream.link(videoOutRight.input)
+
+    monoLeft.out.link(videoEncoderLeft.input)
+    videoEncoderLeft.bitstream.link(videoOutLeft.input)
 
     return pipeline
 
